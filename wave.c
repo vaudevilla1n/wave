@@ -1,8 +1,24 @@
+#define _DEFAULT_SOURCE
 #include <math.h>
 #include <stdio.h>
 #include <raylib.h>
 #include <string.h>
 #include <stdlib.h>
+
+static inline float secf(const float r)
+{
+	return 1.0 / sinf(r);
+}
+static inline float cosecf(const float r)
+{
+	return 1.0 / cosf(r);
+}
+static inline float cotanf(const float r)
+{
+	return 1.0 / tanf(r);
+}
+
+typedef float(*WaveFunction)(float);
 
 const int width = 720;
 const int height = 600;
@@ -16,12 +32,12 @@ const int wavelength = 100;
 const int bottom_text_size = title_size; 
 const Vector2 bottom_text_pos = { 0, height / 2 + wavelength}; 
 
-void DrawSineTunnel(const Vector2 start, const int x_coord, const int dx)
+void DrawTunnel(const Vector2 start, const int x_coord, const int dx, WaveFunction wave_func, const char *wave_name)
 {
 	for (int x = 0; x < width; x += dx) {
 		const Vector2 pos = {
 			.x = start.x + x,
-			.y = start.y + wavelength * sinf(x * DEG2RAD),
+			.y = start.y + wavelength * wave_func(x * DEG2RAD),
 		};
 
 		DrawCircleV(pos, dot_radius * 3/2, ColorAlpha(DARKGRAY, 0.25));
@@ -29,38 +45,23 @@ void DrawSineTunnel(const Vector2 start, const int x_coord, const int dx)
 
 	const Vector2 pos = {
 		.x = start.x + x_coord,
-		.y = start.y + wavelength * sinf(x_coord * DEG2RAD),
+		.y = start.y + wavelength * wave_func(x_coord * DEG2RAD),
 	};
 
 	DrawCircleV(pos, dot_radius, RAYWHITE);
 
-	DrawText("(sine)", bottom_text_pos.x, bottom_text_pos.y, bottom_text_size, RAYWHITE);
-}
-
-void DrawCosineTunnel(const Vector2 start, const int x_coord, const int dx)
-{
-	for (int x = 0; x < width; x += dx) {
-		const Vector2 pos = {
-			.x = start.x + x,
-			.y = start.y + wavelength * cosf(x * DEG2RAD),
-		};
-
-		DrawCircleV(pos, dot_radius * 3/2, ColorAlpha(DARKGRAY, 0.25));
-	}
-
-	const Vector2 pos = {
-		.x = start.x + x_coord,
-		.y = start.y + wavelength * cosf(x_coord * DEG2RAD),
-	};
-
-	DrawCircleV(pos, dot_radius, RAYWHITE);
-
-	DrawText("(cosine)", bottom_text_pos.x, bottom_text_pos.y, bottom_text_size, RAYWHITE);
+	DrawText(wave_name, bottom_text_pos.x, bottom_text_pos.y, bottom_text_size, RAYWHITE);
 }
 
 enum wave {
 	SINE,
 	COSINE,
+	TANGENT,
+
+	SECANT,
+	COSECANT,
+	COTANGENT,
+
 	INVALID,
 };
 
@@ -76,6 +77,15 @@ enum wave parse_wave_type(const int argc, char **argv)
 		return SINE;
 	if (!strcmp(argv[1], "cosine"))
 		return COSINE;
+	if (!strcmp(argv[1], "tangent"))
+		return TANGENT;
+
+	if (!strcmp(argv[1], "secant"))
+		return SECANT;
+	if (!strcmp(argv[1], "cosecant"))
+		return COSECANT;
+	if (!strcmp(argv[1], "cotangent"))
+		return COTANGENT;
 
 	return INVALID;
 }
@@ -99,8 +109,24 @@ int main(const int argc, char **argv)
 	SetWindowPosition(screen_pos.x, screen_pos.y);
 
 	const Vector2 start = { 0, (height - wavelength) / 2 };
-	const int dx = 10;
+	const int dx = 5;
 	int x_coord = 0;
+
+	const char *wave_name;
+	WaveFunction wave_func;
+
+	switch (wave_type) {
+	case SINE:	wave_name = "(sine)"; wave_func = sinf; break;
+	case COSINE:	wave_name = "(cosine)"; wave_func = cosf; break;
+	case TANGENT:	wave_name = "(tangent)"; wave_func = tanf; break;
+
+	case SECANT:	wave_name = "(secant)"; wave_func = secf; break;
+	case COSECANT:	wave_name = "(cosecant)"; wave_func = cosecf; break;
+	case COTANGENT:	wave_name = "(cotangent)"; wave_func = cotanf; break;
+
+	default: __builtin_unreachable();
+	}
+
 
 	SetTargetFPS(60);
 	while (!WindowShouldClose()) {
@@ -110,12 +136,7 @@ int main(const int argc, char **argv)
 
 		DrawText("serpent lullaby", title_pos.x, title_pos.y, title_size, SKYBLUE);
 
-		switch (wave_type) {
-		case SINE: DrawSineTunnel(start, x_coord, dx); break;
-		case COSINE: DrawCosineTunnel(start, x_coord, dx); break;
-
-		default: __builtin_unreachable();
-		}
+		DrawTunnel(start, x_coord, dx, wave_func, wave_name);
 
 		x_coord = (x_coord + dx) % (width * 5/4);
 
